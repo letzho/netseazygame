@@ -35,6 +35,7 @@ app.use(express.json());
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Handle preflight requests
 app.options('*', cors());
