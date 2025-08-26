@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node index.js",
     "build": "npm install --prefix ../eazygame && npm run build --prefix ../eazygame",
+    "heroku-postbuild": "npm --prefix eazygame ci && npm --prefix eazygame run build",
     "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -20,5 +21,6 @@
     "openai": "^5.15.0",
     "pg": "^8.16.3",
     "qrcode": "^1.5.4"
+    
   }
 }
