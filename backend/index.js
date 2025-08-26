@@ -2,6 +2,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 require("dotenv").config();
 const pool = require("./db");
 const nodemailer = require("nodemailer");
@@ -10,11 +11,11 @@ const QRCode = require("qrcode");
 const app = express();
 const PORT = process.env.PORT || 3002;
 
-// ---- Safety: surface boot errors in logs
+// ---- Error surfacing
 process.on("unhandledRejection", (r) => console.error("UNHANDLED REJECTION:", r));
 process.on("uncaughtException", (e) => { console.error("UNCAUGHT EXCEPTION:", e); process.exit(1); });
 
-// ---- OpenAI (guarded so missing key won’t crash boot)
+// ---- OpenAI (guarded)
 let openai = null;
 try {
   if (process.env.OPENAI_API_KEY) {
@@ -28,32 +29,36 @@ try {
 }
 
 // ---- Middleware
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "https://eazygamepay-52b0185fda6d.herokuapp.com",
-    "https://eazygamepay-frontend.herokuapp.com",
-    "https://netseazygame-0dd1ff80b2d1.herokuapp.com"
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-}));
-app.options("*", cors()); // preflight
+app.use(cors({ origin: true, credentials: true }));
+app.options("*", cors());
 app.use(express.json());
 
 // ---- Health
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-// ---- Static: serve SPA built into /eazygame/dist (ONE source of truth)
-const clientBuild = path.join(__dirname, "eazygame", "dist");
-app.use(express.static(clientBuild));
+// ---- Resolve SPA build folder (tries two common layouts)
+const buildCandidates = [
+  path.join(__dirname, "eazygame", "dist"),   // repoRoot/eazygame/dist
+  path.join(__dirname, "..", "eazygame", "dist") // backend/../eazygame/dist (if backend in subfolder)
+];
 
-// ---- API ROUTES -------------------------------------------------------------
+let clientBuild = null;
+for (const p of buildCandidates) {
+  if (fs.existsSync(path.join(p, "index.html"))) {
+    clientBuild = p;
+    break;
+  }
+}
 
-// DB connectivity test
+if (clientBuild) {
+  console.log("[STATIC] Serving SPA from:", clientBuild);
+  app.use(express.static(clientBuild));
+} else {
+  console.warn("[STATIC] No SPA build found. Checked:", buildCandidates);
+}
+
+// ================== API ROUTES (unchanged functionality) ==================
+
 app.get("/api/test-db", async (_req, res) => {
   try {
     const result = await pool.query("SELECT NOW()");
@@ -63,7 +68,6 @@ app.get("/api/test-db", async (_req, res) => {
   }
 });
 
-// Schema check
 app.get("/api/db-schema", async (_req, res) => {
   try {
     const tablesResult = await pool.query(`
@@ -98,7 +102,6 @@ app.get("/api/db-schema", async (_req, res) => {
   }
 });
 
-// Auth (demo)
 app.post("/api/login", async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -122,7 +125,6 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
-// Cards + transactions
 app.get("/api/cards", async (req, res) => {
   const userId = req.query.user_id;
   if (!userId) return res.status(400).json({ error: "Missing user_id" });
@@ -223,7 +225,6 @@ app.get("/api/users/:id", async (req, res) => {
   }
 });
 
-// Split bill
 app.post("/api/split-bill", async (req, res) => {
   const { payer, payerEmail, amount, friends, message, cardId } = req.body;
   if (!payer || !payerEmail || !amount || !Array.isArray(friends) || friends.length === 0 || !cardId)
@@ -252,14 +253,13 @@ app.post("/api/split-bill", async (req, res) => {
     });
 
     for (const friend of friends) {
-      const mailOptions = {
+      await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: friend.email,
         subject: `Split Bill Request from ${payer}`,
         text: `${payer} has split a bill with you. Your share is $${splitAmount}. Message: ${message || "Split bill payment"}`,
         attachments: [{ filename: "split-bill-qr.png", content: qrImage.split(",")[1], encoding: "base64", contentType: "image/png" }]
-      };
-      await transporter.sendMail(mailOptions);
+      });
     }
 
     res.json({ success: true });
@@ -269,7 +269,6 @@ app.post("/api/split-bill", async (req, res) => {
   }
 });
 
-// AI endpoint
 app.post("/api/ai-response", async (req, res) => {
   try {
     if (!openai) return res.status(503).json({ error: "AI not configured" });
@@ -286,17 +285,22 @@ app.post("/api/ai-response", async (req, res) => {
       temperature: 0.7
     });
 
-    const aiResponse = completion.choices[0].message.content;
-    res.json({ response: aiResponse, source: "openai" });
+    res.json({ response: completion.choices[0].message.content, source: "openai" });
   } catch (error) {
     console.error("AI Error:", error);
     res.status(500).json({ error: "Failed to get AI response", details: error.message, source: "error" });
   }
 });
 
-// ---- SPA catch-all (must be last non-API handler)
+// ---- SPA catch-all (serve index.html if we found a build)
 app.get("*", (req, res) => {
   if (req.path.startsWith("/api/")) return res.status(404).json({ error: "Not found" });
+
+  if (!clientBuild) {
+    return res
+      .status(500)
+      .send("SPA build not found. Ensure eazygame/dist exists on the dyno. Did the Heroku postbuild run?");
+  }
   res.sendFile(path.join(clientBuild, "index.html"));
 });
 
