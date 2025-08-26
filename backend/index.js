@@ -36,7 +36,8 @@ app.use(express.json());
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+const clientBuild = path.join(__dirname, "eazygame", "dist");
+app.use(express.static(clientBuild));
 
 // Handle preflight requests
 app.options('*', cors());
@@ -553,13 +554,12 @@ app.get('/api/places/nearby', async (req, res) => {
 });
 
 // Serve Vite build (only for production)
-if (process.env.NODE_ENV === 'production') {
   const clientBuild = path.join(__dirname, "..", "eazygame", "dist");
   app.use(express.static(clientBuild));
   app.get("*", (_, res) => {
     res.sendFile(path.join(clientBuild, "index.html"));
   });
-}
+
 
 // Start server
 app.listen(PORT, () => {
