@@ -1,0 +1,10 @@
+[33m1c1c13b[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Update package.json
+[33mff9fe50[m Remove root Procfile (two-apps setup)
+[33m3a0f17d[m Ensure dist is ignored; add heroku-postbuild
+[33ma5d8696[m Update index.js
+[33m1428312[m Update package.json
+[33m65a21fd[m Add files via upload
+[33m83d39d1[m Add vite devDependency
+[33m80a31c0[m Update project with latest backend and eazygame folders
+[33mccd777c[m Resolve merge conflict in userStore.js - keep localhost for development
+[33m4353729[m Update index.js
