@@ -36,8 +36,7 @@ app.use(express.json());
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 
 app.use(express.json());
-const clientBuild = path.join(__dirname, "eazygame", "dist");
-app.use(express.static(clientBuild));
+
 
 // Handle preflight requests
 app.options('*', cors());
