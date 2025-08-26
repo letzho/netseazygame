@@ -22,7 +22,8 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:5174',
     'https://eazygamepay-52b0185fda6d.herokuapp.com',
-    'https://eazygamepay-frontend.herokuapp.com'
+    'https://eazygamepay-frontend.herokuapp.com',
+    'https://netseazygame-0dd1ff80b2d1.herokuapp.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
