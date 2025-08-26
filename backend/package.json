@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "npm install --prefix ../frontend && npm run build --prefix ../eazygame",
+    "build": "npm install --prefix ../eazygame && npm run build --prefix ../eazygame",
     "dev": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
